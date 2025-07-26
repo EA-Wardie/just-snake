@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Arrow from '../components/Arrow.svelte';
+
 	type Direction = 'up' | 'down' | 'left' | 'right';
 	type Coordinates = { x: number; y: number };
 
@@ -6,11 +8,16 @@
 	const totalCols = innerWidth > 720 ? 32 : 22;
 
 	let direction = $state<Direction>('up');
-	let snake = $state<string[]>(['16_11', '16_12', '16_13', '16_14']);
+	let snake = $state<string[]>([]);
 	let food = $state<string[]>([]);
 	let gameInterval: number;
-	let intervalTiming = 500;
+	let intervalTiming = 400;
+	let gameStarted = $state(false);
 	let isGameOver = $state(false);
+
+	const getHighScore = () => {
+		return localStorage.getItem('highScore') || '0';
+	};
 
 	const getSegmentColor = (position: string) => {
 		if (snake.at(0) === position) {
@@ -28,32 +35,23 @@
 		return 'bg-neutral-950';
 	};
 
-	const isOutOfBounds = (direction: Direction, coordinates: Coordinates) => {
+	const isOutOfBounds = (segment: string) => {
 		return (
-			(direction === 'up' && coordinates.y === 0) ||
-			(direction === 'down' && coordinates.y === totalRows - 1) ||
-			(direction === 'left' && coordinates.x === 0) ||
-			(direction === 'right' && coordinates.x === totalCols - 1)
+			segment.includes('-1') ||
+			segment.includes(totalCols.toString()) ||
+			segment.includes(totalRows.toString())
 		);
 	};
 
 	const makeSegment = (coordinates: Coordinates) => {
 		if (direction === 'up') {
-			return !isOutOfBounds(direction, coordinates)
-				? `${coordinates.x}_${coordinates.y - 1}`
-				: `${coordinates.x}_${totalRows - 1}`;
+			return `${coordinates.x}_${coordinates.y - 1}`;
 		} else if (direction === 'down') {
-			return !isOutOfBounds(direction, coordinates)
-				? `${coordinates.x}_${coordinates.y + 1}`
-				: `${coordinates.x}_${0}`;
+			return `${coordinates.x}_${coordinates.y + 1}`;
 		} else if (direction === 'left') {
-			return !isOutOfBounds(direction, coordinates)
-				? `${coordinates.x - 1}_${coordinates.y}`
-				: `${totalCols - 1}_${coordinates.y}`;
+			return `${coordinates.x - 1}_${coordinates.y}`;
 		} else if (direction === 'right') {
-			return !isOutOfBounds(direction, coordinates)
-				? `${coordinates.x + 1}_${coordinates.y}`
-				: `${0}_${coordinates.y}`;
+			return `${coordinates.x + 1}_${coordinates.y}`;
 		}
 
 		return '0_0';
@@ -61,11 +59,16 @@
 
 	const killGame = () => {
 		clearInterval(gameInterval);
+
+		localStorage.setItem('highScore', (snake.length * 10).toString());
+
+		snake = [];
+		food = [];
 		isGameOver = true;
 	};
 
 	const checkGameState = (segment: string) => {
-		if (snake.includes(segment)) {
+		if (snake.includes(segment) || isOutOfBounds(segment)) {
 			killGame();
 		}
 	};
@@ -119,11 +122,11 @@
 				snake.push(`${tailCoordinates.x - 1}_${tailCoordinates.y}`);
 			}
 
-			if (intervalTiming > 100) {
+			if (intervalTiming > 75) {
 				intervalTiming -= 25;
 			}
 
-			startGameLoop();
+			initGameLoop();
 			generateFood();
 		}
 	};
@@ -172,12 +175,14 @@
 	};
 
 	const generateFood = () => {
-		const randomXCoordinate = Math.floor(Math.random() * (totalCols + 1));
-		const randomYCoordinate = Math.floor(Math.random() * (totalRows + 1));
+		const randomXCoordinate = Math.floor(Math.random() * totalCols);
+		const randomYCoordinate = Math.floor(Math.random() * totalRows);
 		const foodSegment = `${randomXCoordinate}_${randomYCoordinate}`;
 
 		if (snake.includes(foodSegment)) {
 			generateFood();
+
+			return;
 		}
 
 		food.push(foodSegment);
@@ -186,12 +191,14 @@
 	const resetGame = () => {
 		snake = ['16_11', '16_12', '16_13', '16_14'];
 		direction = 'up';
+		intervalTiming = 400;
 		isGameOver = false;
 
-		startGameLoop();
+		initGameLoop();
+		generateFood();
 	};
 
-	const startGameLoop = () => {
+	const initGameLoop = () => {
 		clearInterval(gameInterval);
 
 		gameInterval = setInterval(() => {
@@ -199,38 +206,91 @@
 		}, intervalTiming);
 	};
 
-	startGameLoop();
-	generateFood();
-	registerKeyboardEvents();
+	const startGame = () => {
+		snake = ['16_14', '16_15', '16_16', '16_17'];
+		gameStarted = true;
+
+		initGameLoop();
+		generateFood();
+		registerKeyboardEvents();
+	};
 </script>
 
-<section class="flex h-full items-center justify-center max-md:px-4">
-	<div class="w-full max-w-4xl rounded-lg border border-white/15">
+<section
+	class="flex h-full items-center justify-between max-md:flex-col max-md:p-4 md:justify-center"
+>
+	<div class="h-fit w-full max-w-4xl border-4 border-white/15 md:rounded-lg">
 		{#each { length: totalRows }, rowIndex}
 			<div class="flex w-full">
 				{#each { length: totalCols }, colIndex}
-					<div class="aspect-square border-white/15 p-0.5" style="width: {100 / totalCols}%;">
+					<div class="aspect-square p-0.5" style="width: {100 / totalCols}%;">
 						<div
 							id="{rowIndex}_{colIndex}"
-							class="size-full rounded-lg {getSegmentColor(`${colIndex}_${rowIndex}`)}"
+							class="size-full transition-colors duration-150 {getSegmentColor(
+								`${colIndex}_${rowIndex}`,
+							)}"
 						></div>
 					</div>
 				{/each}
 			</div>
 		{/each}
 	</div>
+
+	<div class="grid grid-cols-3 gap-2 border-4 border-white/15 p-4 md:hidden">
+		<div></div>
+		<button
+			class="flex size-10 items-center justify-center border-4 border-white/15 font-semibold transition-colors duration-75 active:bg-white/20"
+			onclick={() => (direction = 'up')}
+		>
+			<Arrow class="size-8 -rotate-90 text-white" />
+		</button>
+		<div></div>
+
+		<button
+			class="flex size-10 items-center justify-center border-4 border-white/15 font-semibold transition-colors duration-75 active:bg-white/20"
+			onclick={() => (direction = 'left')}
+		>
+			<Arrow class="size-8 rotate-180 text-white" />
+		</button>
+		<button
+			class="flex size-10 items-center justify-center border-4 border-white/15 font-semibold transition-colors duration-75 active:bg-white/20"
+			onclick={() => (direction = 'down')}
+		>
+			<Arrow class="size-8 rotate-90 text-white" />
+		</button>
+		<button
+			class="flex size-10 items-center justify-center border-4 border-white/15 font-semibold transition-colors duration-75 active:bg-white/20"
+			onclick={() => (direction = 'right')}
+		>
+			<Arrow class="size-8 text-white" />
+		</button>
+	</div>
 </section>
 
 {#if isGameOver}
 	<dialog
 		id="gameOverDialog"
-		class="fixed top-1/2 left-1/2 flex h-64 w-full max-w-xl -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-xl bg-neutral-900 p-6 text-center"
+		class="fixed top-1/2 left-1/2 flex w-full max-w-xs -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center border-4 border-white/20 bg-neutral-900 px-6 pt-5 pb-6 text-center md:max-w-xl"
 	>
-		<h1 class="text-4xl font-semibold text-white">Game Over</h1>
+		<h1 class="text-3xl font-semibold text-white md:text-4xl">Game Over</h1>
 		<h2 class="text-2xl text-white">You have died!</h2>
-		<h3 class="mt-4 text-xl text-white">You Score: {snake.length * 10}</h3>
-		<button class="mt-4 rounded-lg bg-white px-4 py-2 font-semibold" onclick={() => resetGame()}>
+		<h3 class="mt-4 text-xl text-white">You Score: {getHighScore()}</h3>
+		<button class="mt-4 bg-white px-3 py-1 font-semibold" onclick={() => resetGame()}>
 			Try Again!
+		</button>
+	</dialog>
+{/if}
+
+{#if !gameStarted}
+	<dialog
+		id="startGameDialog"
+		class="fixed top-1/2 left-1/2 flex w-full max-w-xs -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center border-4 border-white/20 bg-neutral-900 px-6 pt-5 pb-6 text-center md:max-w-xl"
+	>
+		<h1 class="text-3xl font-semibold text-white md:text-4xl">Just Snake</h1>
+		<h2 class="text-2xl text-white">Press PLAY to start playing!</h2>
+		<h3 class="mt-4 text-xl text-white">High Score: {getHighScore()}</h3>
+		<button class="mt-4 bg-white px-3 py-1 font-semibold" onclick={() => startGame()}>
+			Play!
 		</button>
 	</dialog>
 {/if}

@@ -3,3 +3,7 @@
 @theme {
 	--color-primary: oklch(64.8% 0.2 131.684);
 }
+
+html body {
+	@apply bg-neutral-950;
+}

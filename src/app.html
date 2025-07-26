@@ -3,12 +3,13 @@
 	<head>
 		<title>Just Snake</title>
 
-		<link rel="icon" href="%sveltekit.assets%/favicon.svg" />
+		<link rel="icon" href="/favicon.svg" />
+		<link rel="manifest" href="/manifest.json" />
 
 		<!-- Primary Meta Tags -->
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<meta name="title" content="Just Snake - Classic Snake Game in Your Browser" />
+		<meta name="title" content="Just Snake" />
 		<meta
 			name="description"
 			content="Play Just Snake, a fast and minimal snake game built with JavaScript. Simple, addictive, and perfect for killing time. No downloads required."
@@ -33,6 +34,12 @@
 			content="Play Just Snake, a fast and minimal snake game built with JavaScript. Simple, addictive, and perfect for killing time. No downloads required."
 		/>
 		<meta property="twitter:image" content="" />
+
+		<style>
+			html body {
+				background-color: oklch(14.5% 0 0);
+			}
+		</style>
 
 		%sveltekit.head%
 	</head>
