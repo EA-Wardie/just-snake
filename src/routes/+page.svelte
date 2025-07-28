@@ -20,6 +20,7 @@
 	};
 
 	const getSegmentColor = (position: string) => {
+		console.log(snake.at(0), position);
 		if (snake.at(0) === position) {
 			return 'bg-amber-600';
 		}
@@ -219,7 +220,7 @@
 <section
 	class="flex h-full items-center justify-between max-md:flex-col max-md:p-4 md:justify-center"
 >
-	<div class="h-fit w-full max-w-4xl border-4 border-white/15 md:rounded-lg">
+	<div class="h-fit w-full max-w-4xl border-4 border-white/15">
 		{#each { length: totalRows }, rowIndex}
 			<div class="flex w-full">
 				{#each { length: totalCols }, colIndex}
