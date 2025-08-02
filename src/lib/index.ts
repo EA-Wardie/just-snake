@@ -1,6 +1,5 @@
 import { Direction } from './enums/Direction';
-import { Coordinates } from './models/Coordinates';
 import { Segment } from './models/Segment.svelte';
-// import { Snake } from './models/Snake';
+import { Food } from './models/Food.svelte';
 
-export { Direction, Coordinates, Segment };
+export { Direction, Segment, Food };
