@@ -1,10 +1,5 @@
 <script lang="ts">
-	import { Direction, Food, Segment } from '$lib';
-
-	const aspectRatio = innerWidth / innerHeight;
-	const columns = innerWidth > 1920 ? 50 : innerWidth < 720 ? 16 : 30;
-	const rows = Math.floor(columns / aspectRatio);
-	const cell = Math.floor(innerWidth / columns);
+	import { Direction, Food, Segment, Config, Score } from '$lib';
 
 	let interval: number | undefined;
 	let gameHasStarted = $state<boolean>(false);
@@ -12,28 +7,23 @@
 	let snake = $state<Segment[]>([]);
 	let food = $state<Food[]>([]);
 
-	const getHighScore = () => {
-		return localStorage.getItem('highScore') || '0';
-	};
-
-	const updateHighScore = () => {
-		localStorage.setItem('highScore', (snake.length * 10).toString());
-	};
-
-	const getSegmentColor = (index: number) => {
-		if (index === 0) {
-			return 'bg-amber-600';
-		}
-
-		return index % 2 === 0 ? 'bg-primary' : 'bg-lime-500';
-	};
-
 	const isInBounds = () => {
 		const head = snake.at(0);
 
 		return (
-			head && head.getX() > -1 && head.getY() > -1 && head.getX() < columns && head.getY() < rows
+			head &&
+			head.getX() > -1 &&
+			head.getY() > -1 &&
+			head.getX() < Config.COLUMNS &&
+			head.getY() < Config.ROWS
 		);
+	};
+
+	const isCollision = () => {
+		const headCoordinates = `${snake.at(0)?.getX()}_${snake.at(0)?.getY()}`;
+		const bodyCoordinates = snake.slice(1).map((segment) => `${segment.getX()}_${segment.getY()}`);
+
+		return bodyCoordinates.includes(headCoordinates);
 	};
 
 	const isOnFood = () => {
@@ -41,6 +31,15 @@
 			(segment) =>
 				`${segment.getX()}_${segment.getY()}` === `${food.at(0)?.getX()}_${food.at(0)?.getY()}`,
 		);
+	};
+
+	const initSnake = () => {
+		const x = Math.floor(Config.COLUMNS / 2);
+		const y = Math.floor(Config.ROWS / 2);
+
+		for (let index = 0; index < 4; index++) {
+			snake.push(new Segment(x, y + index));
+		}
 	};
 
 	const moveSnake = () => {
@@ -70,38 +69,6 @@
 		snake.pop();
 	};
 
-	const clearGameBoard = () => {
-		snake = [];
-		food = [];
-	};
-
-	const stopGameLoop = () => {
-		clearInterval(interval);
-		clearGameBoard();
-	};
-
-	const resetGame = () => {
-		clearGameBoard();
-		initSnake();
-		createFood();
-		startGameLoop();
-
-		gameIsOver = false;
-	};
-
-	const initSnake = () => {
-		const x = Math.floor(columns / 2);
-		const y = Math.floor(rows / 2);
-
-		for (let index = 0; index < 4; index++) {
-			snake.push(new Segment(x, y + index));
-		}
-	};
-
-	const removeFood = () => {
-		food = [];
-	};
-
 	const feedSnake = () => {
 		const tail = snake.at(-1);
 
@@ -126,31 +93,52 @@
 			}
 		}
 
-		updateHighScore();
+		Score.set(snake.length);
 	};
 
 	const createFood = () => {
 		const random = Number(Math.random().toFixed(1));
 
-		let x = Math.floor(columns * random);
-		let y = Math.floor(rows * random);
+		let x = Math.floor(Config.COLUMNS * random);
+		let y = Math.floor(Config.ROWS * random);
 
-		if (x === columns) {
+		if (x === Config.COLUMNS) {
 			x -= 1;
 		}
 
-		if (y === rows) {
+		if (y === Config.ROWS) {
 			y -= 1;
 		}
 
 		food.push(new Food(x, y));
 	};
 
+	const removeFood = () => {
+		food = [];
+	};
+
+	const startGame = () => {
+		initSnake();
+		createFood();
+		startGameLoop();
+
+		gameHasStarted = true;
+	};
+
+	const resetGame = () => {
+		clearGameBoard();
+		initSnake();
+		createFood();
+		startGameLoop();
+
+		gameIsOver = false;
+	};
+
 	const startGameLoop = () => {
 		clearInterval(interval);
 
 		interval = setInterval(() => {
-			if (isInBounds()) {
+			if (isInBounds() && !isCollision()) {
 				moveSnake();
 
 				if (isOnFood()) {
@@ -166,12 +154,14 @@
 		}, 200);
 	};
 
-	const startGame = () => {
-		initSnake();
-		createFood();
-		startGameLoop();
+	const stopGameLoop = () => {
+		clearInterval(interval);
+		clearGameBoard();
+	};
 
-		gameHasStarted = true;
+	const clearGameBoard = () => {
+		snake = [];
+		food = [];
 	};
 
 	const updateDirectionInput = (event: KeyboardEvent) => {
@@ -218,18 +208,23 @@
 </script>
 
 <section class="flex h-full w-full items-center justify-center bg-neutral-600">
-	<div class="relative bg-neutral-950" style="width: {columns * cell}px; height: {rows * cell}px">
+	<div
+		class="relative bg-neutral-950"
+		style="width: {Config.COLUMNS * Config.CELL_SIZE}px; height: {Config.ROWS * Config.CELL_SIZE}px"
+	>
 		{#each snake as segment, index}
 			<div
-				class="absolute aspect-square {getSegmentColor(index)}"
-				style="width: {cell}px; left: {segment.getX() * cell}px; top: {segment.getY() * cell}px"
+				class="absolute aspect-square {segment.getColor(index)}"
+				style="width: {Config.CELL_SIZE}px; left: {segment.getX() *
+					Config.CELL_SIZE}px; top: {segment.getY() * Config.CELL_SIZE}px"
 			></div>
 		{/each}
 
 		{#each food as foodItem}
 			<div
 				class="absolute aspect-square bg-rose-600"
-				style="width: {cell}px; left: {foodItem.getX() * cell}px; top: {foodItem.getY() * cell}px"
+				style="width: {Config.CELL_SIZE}px; left: {foodItem.getX() *
+					Config.CELL_SIZE}px; top: {foodItem.getY() * Config.CELL_SIZE}px"
 			></div>
 		{/each}
 	</div>
@@ -241,7 +236,7 @@
 	>
 		<h1 class="text-3xl font-semibold text-white uppercase md:text-4xl">Just Snake</h1>
 		<h2 class="mt-2 text-2xl text-white">Press <strong>PLAY</strong> to start playing!</h2>
-		<h3 class="mt-4 text-xl text-white">High Score: {getHighScore()}</h3>
+		<h3 class="mt-4 text-xl text-white">High Best Score: {Score.get()}</h3>
 		<button class="mt-6 w-full bg-white px-4 py-2 font-semibold" onclick={() => startGame()}>
 			PLAY
 		</button>
@@ -254,7 +249,7 @@
 	>
 		<h1 class="text-3xl font-semibold text-white uppercase md:text-4xl">Game Over</h1>
 		<h2 class="mt-2 text-2xl text-white">You have died!</h2>
-		<h3 class="mt-4 text-xl text-white">Your Score: {getHighScore()}</h3>
+		<h3 class="mt-4 text-xl text-white">Your Best Score: {Score.get()}</h3>
 		<button class="mt-6 w-full bg-white px-4 py-2 font-semibold" onclick={() => resetGame()}>
 			TRY AGAIN
 		</button>

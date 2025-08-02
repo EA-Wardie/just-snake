@@ -11,6 +11,14 @@ export class Segment {
 		this.direction = $state(direction);
 	}
 
+	public getColor(index: number) {
+		if (index === 0) {
+			return 'bg-amber-600';
+		}
+
+		return index % 2 === 0 ? 'bg-primary' : 'bg-lime-500';
+	}
+
 	public move() {
 		switch (this.direction) {
 			case Direction.UP:
